@@ -12,9 +12,12 @@ import lombok.NoArgsConstructor;
 public class ChatMessage {
     private String sender;
     private String content;
+    private String roomId;
     private MessageType type;
+    private int onlineCount; // New field for user count
     private String fileUrl; // For storing URL of shared video/audio
     private String fileName;
+    private String timestamp;
 
     public enum MessageType {
         CHAT,
