@@ -25,6 +25,10 @@ public class ChatMessage {
         LEAVE,
         IMAGE,
         VIDEO,
-        AUDIO
+        AUDIO,
+        VOICE_OFFER,
+        VOICE_ANSWER,
+        VOICE_CANDIDATE,
+        GROUP_UPDATE
     }
 }

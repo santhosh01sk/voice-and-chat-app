@@ -4,139 +4,160 @@ import SockJS from 'sockjs-client';
 import axios from 'axios';
 import Sidebar from './Sidebar';
 import ChatWindow from './ChatWindow';
+import useWebRTC from '../hooks/useWebRTC';
 
-const ChatInterface = ({ username, roomId, onLogout }) => {
+const ChatInterface = ({ username, initialRoomId, onLogout }) => {
     const [stompClient, setStompClient] = useState(null);
-    const [messages, setMessages] = useState([]);
-    const [onlineCount, setOnlineCount] = useState(0);
+    const [messagesByRoom, setMessagesByRoom] = useState({});
+    const [onlineCounts, setOnlineCounts] = useState({});
+    const [currentRoomId, setCurrentRoomId] = useState(initialRoomId || 'general');
     const [messageInput, setMessageInput] = useState('');
-    const [isConnected, setIsConnected] = useState(false);
+    const [groups, setGroups] = useState([]);
+    const [recentDMs, setRecentDMs] = useState([]);
+    const [subscribedRooms, setSubscribedRooms] = useState(new Set());
 
+    // Initialize WebRTC signaling
+    useWebRTC(stompClient, currentRoomId, username);
+
+    // Initial Fetch Groups and Users
     useEffect(() => {
-        // Fetch History
-        const fetchHistory = async () => {
+        const fetchData = async () => {
             try {
-                const response = await axios.get(`http://localhost:9090/api/chat/${roomId}`);
-                setMessages(response.data);
+                const gRes = await axios.get('http://localhost:9090/api/groups');
+                setGroups(gRes.data);
+
+                // Fetch all users to populate DM list initially or wait for search
+                const uRes = await axios.get('http://localhost:9090/api/users/all');
+                setRecentDMs(uRes.data.filter(u => u.username !== username));
             } catch (error) {
-                console.error("Failed to fetch history:", error);
+                console.error("Data fetch failed:", error);
             }
         };
-        fetchHistory();
+        fetchData();
+    }, [username]);
 
+    // Persistent STOMP Connection
+    useEffect(() => {
         const socket = new SockJS('http://localhost:9090/ws');
         const client = new Client({
             webSocketFactory: () => socket,
             onConnect: () => {
-                setIsConnected(true);
-                client.subscribe('/topic/' + roomId, onMessageReceived);
-
-                client.publish({
-                    destination: "/app/chat/" + roomId + "/addUser",
-                    body: JSON.stringify({
-                        sender: username,
-                        type: 'JOIN'
-                    })
-                });
+                console.log("Connected to STOMP");
+                setStompClient(client);
+                // Subscribe to current room on connect
+                subscribeToRoom(client, currentRoomId);
             },
-            onStompError: (err) => {
-                console.error("STOMP error", err);
-            },
-            onDisconnect: () => {
-                setIsConnected(false);
-            }
+            onStompError: (err) => console.error("STOMP error", err),
         });
 
         client.activate();
-        setStompClient(client);
+        return () => client.deactivate();
+    }, [username]);
 
-        return () => {
-            if (client) {
-                client.deactivate();
+    const subscribeToRoom = (client, roomId) => {
+        if (!client || subscribedRooms.has(roomId)) return;
+
+        client.subscribe('/topic/' + roomId, (payload) => {
+            const data = JSON.parse(payload.body);
+
+            if (window.handleSignaling &&
+                ['VOICE_OFFER', 'VOICE_ANSWER', 'VOICE_CANDIDATE'].includes(data.type)) {
+                window.handleSignaling(data);
+                return;
             }
-        };
-    }, [roomId, username]);
 
-    const onMessageReceived = (payload) => {
-        const payloadData = JSON.parse(payload.body);
-        if (payloadData.onlineCount) {
-            setOnlineCount(payloadData.onlineCount);
-        }
-        setMessages(prev => [...prev, payloadData]);
+            if (data.onlineCount !== undefined) {
+                setOnlineCounts(prev => ({ ...prev, [roomId]: data.onlineCount }));
+            }
+
+            setMessagesByRoom(prev => ({
+                ...prev,
+                [roomId]: [...(prev[roomId] || []), data]
+            }));
+        });
+
+        client.publish({
+            destination: "/app/chat/" + roomId + "/addUser",
+            body: JSON.stringify({ sender: username, type: 'JOIN' })
+        });
+
+        setSubscribedRooms(prev => {
+            const next = new Set(prev);
+            next.add(roomId);
+            return next;
+        });
+
+        // Fetch history
+        axios.get(`http://localhost:9090/api/chat/${roomId}`).then(res => {
+            setMessagesByRoom(prev => ({ ...prev, [roomId]: res.data }));
+        });
     };
 
-    const sendMessage = () => {
-        if (stompClient && messageInput.trim()) {
-            const chatMessage = {
-                sender: username,
-                content: messageInput,
-                type: 'CHAT'
-            };
+    const sendMessage = (type = 'CHAT', content = messageInput, fileUrl = null) => {
+        if (stompClient && (content.trim() || type !== 'CHAT')) {
             stompClient.publish({
-                destination: "/app/chat/" + roomId + "/sendMessage",
-                body: JSON.stringify(chatMessage)
+                destination: "/app/chat/" + currentRoomId + "/sendMessage",
+                body: JSON.stringify({
+                    sender: username,
+                    content: content,
+                    type: type,
+                    fileUrl: fileUrl
+                })
             });
-            setMessageInput('');
+            if (type === 'CHAT') setMessageInput('');
         }
     };
 
-    const handleFileUpload = async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            const response = await axios.post('http://localhost:9090/api/files/upload', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
-
-            // Ensure URL uses correct port if needed, though backend returns absolute from request
-            // If backend returns 8080 by default but we run on 9090, we might need replacement.
-            // Backend `FileUploadController` constructs URI from context.
-            // Let's assume it returns the correct accessible URL.
-            // Just in case, the legacy code had a replace.
-            let fileUrl = response.data.fileDownloadUri;
-            if (fileUrl.includes(":8080")) {
-                fileUrl = fileUrl.replace(":8080", ":9090");
-            }
-
-            const fileType = file.type.startsWith('image/') ? 'IMAGE' :
-                file.type.startsWith('video/') ? 'VIDEO' :
-                    file.type.startsWith('audio/') ? 'AUDIO' : 'CHAT';
-
-            if (stompClient) {
-                const chatMessage = {
-                    sender: username,
-                    content: response.data.fileName, // Or caption
-                    type: fileType,
-                    fileUrl: fileUrl
-                };
-                stompClient.publish({
-                    destination: "/app/chat/" + roomId + "/sendMessage",
-                    body: JSON.stringify(chatMessage)
-                });
-            }
-        } catch (error) {
-            console.error("Error uploading file: ", error);
+    const handleRoomChange = (newRoomId, isNewGroup = false, groupName = '') => {
+        if (isNewGroup) {
+            axios.post('http://localhost:9090/api/groups', { roomId: newRoomId, name: groupName })
+                .then(res => setGroups(prev => [...prev, res.data]));
         }
+        if (!subscribedRooms.has(newRoomId) && stompClient) {
+            subscribeToRoom(stompClient, newRoomId);
+        }
+        setCurrentRoomId(newRoomId);
+    };
+
+    const handleSearchUser = (targetUsername) => {
+        const names = [username, targetUsername].sort();
+        const privateRoomId = `p2p-${names[0]}-${names[1]}`;
+        handleRoomChange(privateRoomId);
     };
 
     return (
         <div className="flex h-screen w-full overflow-hidden bg-white">
-            <Sidebar username={username} roomId={roomId} onLogout={onLogout} />
+            <Sidebar
+                username={username}
+                roomId={currentRoomId}
+                groups={groups}
+                recentDMs={recentDMs}
+                onLogout={onLogout}
+                onRoomChange={handleRoomChange}
+                onSearchUser={handleSearchUser}
+            />
             <ChatWindow
-                messages={messages}
+                messages={messagesByRoom[currentRoomId] || []}
                 currentUser={username}
-                roomId={roomId}
-                onlineCount={onlineCount}
+                roomId={currentRoomId}
+                onlineCount={onlineCounts[currentRoomId] || 0}
                 messageInput={messageInput}
                 setMessageInput={setMessageInput}
-                onSendMessage={sendMessage}
-                onFileUpload={handleFileUpload}
+                onSendMessage={() => sendMessage()}
+                onFileUpload={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    try {
+                        const res = await axios.post('http://localhost:9090/api/files/upload', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' }
+                        });
+                        let url = res.data.fileDownloadUri.replace(":8080", ":9090");
+                        sendMessage(file.type.split('/')[0].toUpperCase(), res.data.fileName, url);
+                    } catch (err) { console.error(err); }
+                }}
+                onStartCall={() => window.startVoiceCall?.()}
             />
         </div>
     );

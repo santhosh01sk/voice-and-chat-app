@@ -2,7 +2,9 @@ package com.example.chat.controller;
 
 import com.example.chat.model.ChatMessage;
 import com.example.chat.model.ChatMessageEntity;
+import com.example.chat.model.UserEntity;
 import com.example.chat.repository.ChatMessageRepository;
+import com.example.chat.repository.UserRepository;
 import com.example.chat.service.RoomService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -25,68 +27,81 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "http://localhost:5173")
 public class ChatController {
 
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
+        @Autowired
+        private SimpMessagingTemplate messagingTemplate;
 
-    @Autowired
-    private RoomService roomService;
+        @Autowired
+        private RoomService roomService;
 
-    @Autowired
-    private ChatMessageRepository chatMessageRepository;
+        @Autowired
+        private ChatMessageRepository chatMessageRepository;
 
-    @MessageMapping("/chat/{roomId}/sendMessage")
-    public void sendMessage(@DestinationVariable String roomId, @Payload ChatMessage chatMessage) {
-        // Save to DB
-        ChatMessageEntity entity = ChatMessageEntity.builder()
-                .sender(chatMessage.getSender())
-                .content(chatMessage.getContent())
-                .roomId(roomId)
-                .type(chatMessage.getType())
-                .fileUrl(chatMessage.getFileUrl())
-                // .timestamp set on pre-persist
-                .build();
+        @Autowired
+        private UserRepository userRepository;
 
-        ChatMessageEntity saved = chatMessageRepository.save(entity);
+        @MessageMapping("/chat/{roomId}/sendMessage")
+        public void sendMessage(@DestinationVariable String roomId, @Payload ChatMessage chatMessage) {
+                // Save to DB
+                ChatMessageEntity entity = ChatMessageEntity.builder()
+                                .sender(chatMessage.getSender())
+                                .content(chatMessage.getContent())
+                                .roomId(roomId)
+                                .type(chatMessage.getType())
+                                .fileUrl(chatMessage.getFileUrl())
+                                // .timestamp set on pre-persist
+                                .build();
 
-        // Add timestamp to message before sending
-        chatMessage.setTimestamp(
-                saved.getTimestamp() != null ? saved.getTimestamp().format(DateTimeFormatter.ofPattern("HH:mm"))
-                        : LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+                ChatMessageEntity saved = chatMessageRepository.save(entity);
 
-        messagingTemplate.convertAndSend("/topic/" + roomId, chatMessage);
-    }
+                // Add timestamp to message before sending
+                chatMessage.setTimestamp(
+                                saved.getTimestamp() != null
+                                                ? saved.getTimestamp().format(DateTimeFormatter.ofPattern("HH:mm"))
+                                                : LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
 
-    @MessageMapping("/chat/{roomId}/addUser")
-    public void addUser(@DestinationVariable String roomId, @Payload ChatMessage chatMessage,
-            SimpMessageHeaderAccessor headerAccessor) {
+                messagingTemplate.convertAndSend("/topic/" + roomId, chatMessage);
+        }
 
-        // Add user to room
-        roomService.addUser(roomId, chatMessage.getSender());
+        @MessageMapping("/chat/{roomId}/addUser")
+        public void addUser(@DestinationVariable String roomId, @Payload ChatMessage chatMessage,
+                        SimpMessageHeaderAccessor headerAccessor) {
 
-        // Add username and roomId in web socket session
-        headerAccessor.getSessionAttributes().put("username", chatMessage.getSender());
-        headerAccessor.getSessionAttributes().put("roomId", roomId);
+                // Ensure user exists in DB
+                userRepository.findByUsername(chatMessage.getSender()).orElseGet(() -> {
+                        UserEntity newUser = UserEntity.builder()
+                                        .username(chatMessage.getSender())
+                                        .build();
+                        return userRepository.save(newUser);
+                });
 
-        // Set current user count
-        chatMessage.setOnlineCount(roomService.getUserCount(roomId));
+                // Add user to room
+                roomService.addUser(roomId, chatMessage.getSender());
 
-        messagingTemplate.convertAndSend("/topic/" + roomId, chatMessage);
-    }
+                // Add username and roomId in web socket session
+                headerAccessor.getSessionAttributes().put("username", chatMessage.getSender());
+                headerAccessor.getSessionAttributes().put("roomId", roomId);
 
-    @GetMapping("/api/chat/{roomId}")
-    @ResponseBody
-    public List<ChatMessage> getChatHistory(@PathVariable String roomId) {
-        return chatMessageRepository.findByRoomIdOrderByTimestampAsc(roomId).stream()
-                .map(entity -> ChatMessage.builder()
-                        .sender(entity.getSender())
-                        .content(entity.getContent())
-                        .type(entity.getType())
-                        .roomId(entity.getRoomId())
-                        .fileUrl(entity.getFileUrl())
-                        .timestamp(entity.getTimestamp() != null
-                                ? entity.getTimestamp().format(DateTimeFormatter.ofPattern("HH:mm"))
-                                : null)
-                        .build())
-                .collect(Collectors.toList());
-    }
+                // Set current user count
+                chatMessage.setOnlineCount(roomService.getUserCount(roomId));
+
+                messagingTemplate.convertAndSend("/topic/" + roomId, chatMessage);
+        }
+
+        @GetMapping("/api/chat/{roomId}")
+        @ResponseBody
+        public List<ChatMessage> getChatHistory(@PathVariable String roomId) {
+                return chatMessageRepository.findByRoomIdOrderByTimestampAsc(roomId).stream()
+                                .map(entity -> ChatMessage.builder()
+                                                .sender(entity.getSender())
+                                                .content(entity.getContent())
+                                                .type(entity.getType())
+                                                .roomId(entity.getRoomId())
+                                                .fileUrl(entity.getFileUrl())
+                                                .timestamp(entity.getTimestamp() != null
+                                                                ? entity.getTimestamp().format(
+                                                                                DateTimeFormatter.ofPattern("HH:mm"))
+                                                                : null)
+                                                .build())
+                                .collect(Collectors.toList());
+        }
 }
