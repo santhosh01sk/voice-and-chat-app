@@ -81,6 +81,20 @@ const Sidebar = ({ username, roomId, groups, recentDMs, onLogout, onRoomChange, 
                         <div>
                             <h4 className="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Groups</h4>
                             <div className="space-y-1">
+                                {/* Default General Group */}
+                                <div
+                                    onClick={() => onRoomChange('general')}
+                                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${roomId === 'general' ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-gray-50'}`}
+                                >
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                                        <span className="text-indigo-600 font-bold font-serif italic text-lg opacity-80">G</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-gray-900 font-bold truncate">General</span>
+                                        <span className="text-[10px] text-indigo-400 font-medium uppercase tracking-wider">Public Channel</span>
+                                    </div>
+                                </div>
+
                                 {groups.map(g => (
                                     <div key={g.id} onClick={() => onRoomChange(g.roomId)} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${roomId === g.roomId ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-gray-50'}`}>
                                         <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden">

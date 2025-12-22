@@ -140,9 +140,9 @@ const ChatWindow = ({
                             </div>
                         );
                     }
-                    if (msg.type === 'VOICE_OFFER' || msg.type === 'VOICE_ANSWER' || msg.type === 'VOICE_CANDIDATE') {
-                        return null; // Signaling messages shouldn't show in UI
-                    }
+                //    if (msg.type === 'VOICE_OFFER' || msg.type === 'VOICE_ANSWER' || msg.type === 'VOICE_CANDIDATE') {
+                      //  return null; // Signaling messages shouldn't show in UI
+                   // }//
                     return (
                         <MessageBubble
                             key={index}
