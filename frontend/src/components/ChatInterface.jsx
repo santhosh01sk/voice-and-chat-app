@@ -18,7 +18,13 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
 
     // Call state: 'idle', 'incoming', 'outgoing', 'connected'
     const [callStatus, setCallStatus] = useState('idle');
+    const callStatusRef = useRef('idle');
     const [caller, setCaller] = useState(null);
+
+    // Update ref whenever state changes
+    useEffect(() => {
+        callStatusRef.current = callStatus;
+    }, [callStatus]);
 
     useWebRTC(stompClient, currentRoomId, username);
 
@@ -63,7 +69,7 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
             // Handle signaling and call status
             if (['VOICE_OFFER', 'VOICE_ANSWER', 'VOICE_CANDIDATE', 'VOICE_END'].includes(data.type)) {
                 if (data.sender !== username && window.handleSignaling) {
-                    if (data.type === 'VOICE_OFFER' && callStatus === 'idle') {
+                    if (data.type === 'VOICE_OFFER' && callStatusRef.current === 'idle') {
                         setCallStatus('incoming');
                         setCaller(data.sender);
                     } else if (data.type === 'VOICE_ANSWER') {

@@ -29,6 +29,8 @@ public class ChatMessage {
         VOICE_OFFER,
         VOICE_ANSWER,
         VOICE_CANDIDATE,
+        VOICE_END,
+        VOICE_MSG,
         GROUP_UPDATE
     }
 }

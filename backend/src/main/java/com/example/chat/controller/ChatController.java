@@ -41,23 +41,31 @@ public class ChatController {
 
         @MessageMapping("/chat/{roomId}/sendMessage")
         public void sendMessage(@DestinationVariable String roomId, @Payload ChatMessage chatMessage) {
-                // Save to DB
-                ChatMessageEntity entity = ChatMessageEntity.builder()
-                                .sender(chatMessage.getSender())
-                                .content(chatMessage.getContent())
-                                .roomId(roomId)
-                                .type(chatMessage.getType())
-                                .fileUrl(chatMessage.getFileUrl())
-                                // .timestamp set on pre-persist
-                                .build();
+                // Save to DB (only if not a signaling message)
+                boolean isSignaling = chatMessage.getType() != null &&
+                                chatMessage.getType().name().startsWith("VOICE_");
 
-                ChatMessageEntity saved = chatMessageRepository.save(entity);
+                if (!isSignaling) {
+                        ChatMessageEntity entity = ChatMessageEntity.builder()
+                                        .sender(chatMessage.getSender())
+                                        .content(chatMessage.getContent())
+                                        .roomId(roomId)
+                                        .type(chatMessage.getType())
+                                        .fileUrl(chatMessage.getFileUrl())
+                                        .build();
 
-                // Add timestamp to message before sending
-                chatMessage.setTimestamp(
-                                saved.getTimestamp() != null
-                                                ? saved.getTimestamp().format(DateTimeFormatter.ofPattern("HH:mm"))
-                                                : LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+                        ChatMessageEntity saved = chatMessageRepository.save(entity);
+
+                        // Add timestamp to message before sending
+                        chatMessage.setTimestamp(
+                                        saved.getTimestamp() != null
+                                                        ? saved.getTimestamp()
+                                                                        .format(DateTimeFormatter.ofPattern("HH:mm"))
+                                                        : LocalDateTime.now()
+                                                                        .format(DateTimeFormatter.ofPattern("HH:mm")));
+                } else {
+                        chatMessage.setTimestamp(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+                }
 
                 messagingTemplate.convertAndSend("/topic/" + roomId, chatMessage);
         }
