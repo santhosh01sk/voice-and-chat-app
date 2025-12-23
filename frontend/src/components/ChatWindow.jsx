@@ -76,6 +76,15 @@ const ChatWindow = ({
         }
     };
 
+    const getDisplayName = () => {
+        if (isGroup) return groupData?.name || roomId;
+        if (roomId.startsWith('p2p-')) {
+            const participants = roomId.replace('p2p-', '').split('-');
+            return participants.find(p => p !== currentUser) || roomId;
+        }
+        return roomId.charAt(0).toUpperCase() + roomId.slice(1);
+    };
+
     return (
         <div className="flex-1 flex flex-col h-full bg-slate-50 relative">
             {/* Simple dot pattern bg */}
@@ -88,19 +97,23 @@ const ChatWindow = ({
                         {isGroup && groupData?.groupPicUrl ? (
                             <img src={groupData.groupPicUrl} alt="Group" className="w-full h-full object-cover" />
                         ) : (
-                            <span className="text-xl font-bold text-indigo-600">#</span>
+                            <span className="text-xl font-bold text-indigo-600">
+                                {getDisplayName().charAt(0).toUpperCase()}
+                            </span>
                         )}
                     </div>
                     <div>
                         <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                            {isGroup ? (groupData?.name || roomId) : roomId}
-                            <span className="bg-indigo-100 text-indigo-600 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
-                                {isGroup ? 'Group' : 'Direct'}
-                            </span>
+                            {getDisplayName()}
+                            {isGroup && (
+                                <span className="bg-indigo-100 text-indigo-600 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                                    Group
+                                </span>
+                            )}
                         </h2>
                         <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
                             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                            {onlineCount} active participants
+                            {isGroup ? `${onlineCount} members online` : 'Active now'}
                         </span>
                     </div>
                 </div>
