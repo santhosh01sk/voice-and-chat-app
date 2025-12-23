@@ -57,10 +57,32 @@ const useWebRTC = (stompClient, roomId, username) => {
         }
     };
 
+    const endCall = () => {
+        sendSignaling('VOICE_END', '{}');
+        cleanup();
+    };
+
+    const cleanup = () => {
+        if (localStream.current) {
+            localStream.current.getTracks().forEach(track => track.stop());
+            localStream.current = null;
+        }
+        if (pc.current) {
+            pc.current.close();
+            pc.current = null;
+        }
+        const remoteAudio = document.getElementById('remoteAudio');
+        if (remoteAudio) {
+            remoteAudio.srcObject = null;
+        }
+    };
+
     const handleSignaling = async (data) => {
-        const payload = JSON.parse(data.content);
+        // Only process signaling messages for this user/room
+        if (data.sender === username) return;
 
         if (data.type === 'VOICE_OFFER') {
+            const payload = JSON.parse(data.content);
             if (!pc.current) {
                 localStream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
                 createPeerConnection();
@@ -70,31 +92,34 @@ const useWebRTC = (stompClient, roomId, username) => {
             await pc.current.setLocalDescription(answer);
             sendSignaling('VOICE_ANSWER', JSON.stringify(answer));
         } else if (data.type === 'VOICE_ANSWER') {
-            await pc.current.setRemoteDescription(new RTCSessionDescription(payload));
+            const payload = JSON.parse(data.content);
+            if (pc.current) {
+                await pc.current.setRemoteDescription(new RTCSessionDescription(payload));
+            }
         } else if (data.type === 'VOICE_CANDIDATE') {
+            const payload = JSON.parse(data.content);
             if (pc.current) {
                 await pc.current.addIceCandidate(new RTCIceCandidate(payload));
             }
+        } else if (data.type === 'VOICE_END') {
+            cleanup();
         }
     };
 
     useEffect(() => {
         window.startVoiceCall = startCall;
+        window.endVoiceCall = endCall;
         window.handleSignaling = handleSignaling;
 
         return () => {
             delete window.startVoiceCall;
+            delete window.endVoiceCall;
             delete window.handleSignaling;
-            if (localStream.current) {
-                localStream.current.getTracks().forEach(track => track.stop());
-            }
-            if (pc.current) {
-                pc.current.close();
-            }
+            cleanup();
         };
     }, [stompClient, roomId, username]);
 
-    return { startCall };
+    return { startCall, endCall };
 };
 
 export default useWebRTC;

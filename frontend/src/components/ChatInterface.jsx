@@ -16,17 +16,18 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
     const [recentDMs, setRecentDMs] = useState([]);
     const [subscribedRooms, setSubscribedRooms] = useState(new Set());
 
-    // Initialize WebRTC signaling
+    // Call state: 'idle', 'incoming', 'outgoing', 'connected'
+    const [callStatus, setCallStatus] = useState('idle');
+    const [caller, setCaller] = useState(null);
+
     useWebRTC(stompClient, currentRoomId, username);
 
-    // Initial Fetch Groups and Users
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const gRes = await axios.get('http://localhost:9090/api/groups');
                 setGroups(gRes.data);
 
-                // Fetch all users to populate DM list initially or wait for search
                 const uRes = await axios.get('http://localhost:9090/api/users/all');
                 setRecentDMs(uRes.data.filter(u => u.username !== username));
             } catch (error) {
@@ -44,7 +45,6 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
             onConnect: () => {
                 console.log("Connected to STOMP");
                 setStompClient(client);
-                // Subscribe to current room on connect
                 subscribeToRoom(client, currentRoomId);
             },
             onStompError: (err) => console.error("STOMP error", err),
@@ -60,9 +60,19 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
         client.subscribe('/topic/' + roomId, (payload) => {
             const data = JSON.parse(payload.body);
 
-            if (window.handleSignaling &&
-                ['VOICE_OFFER', 'VOICE_ANSWER', 'VOICE_CANDIDATE'].includes(data.type)) {
-                window.handleSignaling(data);
+            // Handle signaling and call status
+            if (['VOICE_OFFER', 'VOICE_ANSWER', 'VOICE_CANDIDATE', 'VOICE_END'].includes(data.type)) {
+                if (data.sender !== username && window.handleSignaling) {
+                    if (data.type === 'VOICE_OFFER' && callStatus === 'idle') {
+                        setCallStatus('incoming');
+                        setCaller(data.sender);
+                    } else if (data.type === 'VOICE_ANSWER') {
+                        setCallStatus('connected');
+                    } else if (data.type === 'VOICE_END') {
+                        setCallStatus('idle');
+                    }
+                    window.handleSignaling(data);
+                }
                 return;
             }
 
@@ -87,7 +97,6 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
             return next;
         });
 
-        // Fetch history
         axios.get(`http://localhost:9090/api/chat/${roomId}`).then(res => {
             setMessagesByRoom(prev => ({ ...prev, [roomId]: res.data }));
         });
@@ -108,6 +117,18 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
         }
     };
 
+    const handleFileUpload = async (file, type) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const res = await axios.post('http://localhost:9090/api/files/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            let url = res.data.fileDownloadUri.replace(":8080", ":9090");
+            sendMessage(type || file.type.split('/')[0].toUpperCase(), res.data.fileName, url);
+        } catch (err) { console.error(err); }
+    };
+
     const handleRoomChange = (newRoomId, isNewGroup = false, groupName = '') => {
         if (isNewGroup) {
             axios.post('http://localhost:9090/api/groups', { roomId: newRoomId, name: groupName })
@@ -123,6 +144,21 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
         const names = [username, targetUsername].sort();
         const privateRoomId = `p2p-${names[0]}-${names[1]}`;
         handleRoomChange(privateRoomId);
+    };
+
+    const startCall = () => {
+        setCallStatus('outgoing');
+        window.startVoiceCall?.();
+    };
+
+    const endCall = () => {
+        setCallStatus('idle');
+        window.endVoiceCall?.();
+    };
+
+    const acceptCall = () => {
+        setCallStatus('connected');
+        // Signaling handler handles the rest on receiving offer
     };
 
     return (
@@ -144,21 +180,15 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
                 messageInput={messageInput}
                 setMessageInput={setMessageInput}
                 onSendMessage={() => sendMessage()}
-                onFileUpload={async (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    try {
-                        const res = await axios.post('http://localhost:9090/api/files/upload', formData, {
-                            headers: { 'Content-Type': 'multipart/form-data' }
-                        });
-                        let url = res.data.fileDownloadUri.replace(":8080", ":9090");
-                        sendMessage(file.type.split('/')[0].toUpperCase(), res.data.fileName, url);
-                    } catch (err) { console.error(err); }
-                }}
-                onStartCall={() => window.startVoiceCall?.()}
+                onFileUpload={(e) => handleFileUpload(e.target.files[0])}
+                onVoiceSend={(file) => handleFileUpload(file, 'VOICE_MSG')}
+                onStartCall={startCall}
+                onEndCall={endCall}
+                onAcceptCall={acceptCall}
+                callStatus={callStatus}
+                caller={caller}
             />
+            <audio id="remoteAudio" autoPlay style={{ display: 'none' }} />
         </div>
     );
 };

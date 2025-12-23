@@ -24,13 +24,25 @@ const MessageBubble = ({ message, isOwnMessage }) => {
                     </div>
                 );
             case 'AUDIO':
+            case 'VOICE_MSG':
                 return (
-                    <div className="mt-2 mb-2 min-w-[250px]">
-                        <audio controls className="w-full h-10">
-                            <source src={fileUrl} />
-                            Your browser does not support the audio element.
-                        </audio>
-                        {content && <p className="mt-1 text-sm opacity-90">{content}</p>}
+                    <div className={classNames("mt-2 mb-2 min-w-[250px]", {
+                        "text-white": isOwnMessage,
+                        "text-indigo-600": !isOwnMessage && type === 'VOICE_MSG'
+                    })}>
+                        <div className="flex items-center gap-3">
+                            <div className={classNames("w-10 h-10 rounded-full flex items-center justify-center shrink-0", {
+                                "bg-white/20": isOwnMessage,
+                                "bg-indigo-100": !isOwnMessage
+                            })}>
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" /><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" /></svg>
+                            </div>
+                            <audio controls className="w-full h-8 opacity-80 filter transition-all">
+                                <source src={fileUrl} />
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                        {content && <p className="mt-1 text-xs opacity-90 italic">{content}</p>}
                     </div>
                 );
             default:
