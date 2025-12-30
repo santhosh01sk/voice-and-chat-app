@@ -15,11 +15,13 @@ const ChatWindow = ({
     onSendMessage,
     onFileUpload,
     onVoiceSend,
+    onDeleteMessage,
     onStartCall,
     onEndCall,
     onAcceptCall,
     callStatus,
-    caller
+    caller,
+    isUploading
 }) => {
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -185,6 +187,7 @@ const ChatWindow = ({
                             key={index}
                             message={msg}
                             isOwnMessage={msg.sender === currentUser}
+                            onDelete={() => onDeleteMessage(msg.id)}
                         />
                     );
                 })}
@@ -206,7 +209,10 @@ const ChatWindow = ({
                         <input
                             type="file"
                             ref={fileInputRef}
-                            onChange={onFileUpload}
+                            onChange={(e) => {
+                                onFileUpload(e);
+                                e.target.value = null;
+                            }}
                             className="hidden"
                         />
                         <button
@@ -237,10 +243,14 @@ const ChatWindow = ({
 
                         <button
                             onClick={onSendMessage}
-                            disabled={!messageInput.trim()}
+                            disabled={!messageInput.trim() || isUploading}
                             className="send-btn"
                         >
-                            <svg className="send-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                            {isUploading ? (
+                                <div className="loading-spinner"></div>
+                            ) : (
+                                <svg className="send-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                            )}
                         </button>
                     </div>
                 )}

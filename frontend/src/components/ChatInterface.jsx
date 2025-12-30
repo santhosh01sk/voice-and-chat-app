@@ -7,7 +7,7 @@ import ChatWindow from './ChatWindow';
 import useWebRTC from '../hooks/useWebRTC';
 import './ChatInterface.css';
 
-const ChatInterface = ({ username, initialRoomId, onLogout }) => {
+const ChatInterface = ({ username, initialRoomId, onLogout, theme, onThemeChange, themes }) => {
     const [stompClient, setStompClient] = useState(null);
     const [messagesByRoom, setMessagesByRoom] = useState({});
     const [onlineCounts, setOnlineCounts] = useState({});
@@ -16,6 +16,7 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
     const [groups, setGroups] = useState([]);
     const [recentDMs, setRecentDMs] = useState([]);
     const [subscribedRooms, setSubscribedRooms] = useState(new Set());
+    const [isUploading, setIsUploading] = useState(false);
 
     // Call state: 'idle', 'incoming', 'outgoing', 'connected'
     const [callStatus, setCallStatus] = useState('idle');
@@ -83,6 +84,17 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
                 return;
             }
 
+            if (data.type === 'DELETE') {
+                setMessagesByRoom(prev => {
+                    const roomMsgs = prev[roomId] || [];
+                    return {
+                        ...prev,
+                        [roomId]: roomMsgs.filter(m => m.id !== data.id)
+                    };
+                });
+                return;
+            }
+
             if (data.onlineCount !== undefined) {
                 setOnlineCounts(prev => ({ ...prev, [roomId]: data.onlineCount }));
             }
@@ -124,7 +136,22 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
         }
     };
 
+    const deleteMessage = (messageId) => {
+        if (stompClient && messageId) {
+            stompClient.publish({
+                destination: "/app/chat/" + currentRoomId + "/deleteMessage",
+                body: JSON.stringify({
+                    id: messageId,
+                    sender: username,
+                    type: 'DELETE'
+                })
+            });
+        }
+    };
+
     const handleFileUpload = async (file, type) => {
+        if (!file) return;
+        setIsUploading(true);
         const formData = new FormData();
         formData.append('file', file);
         try {
@@ -132,8 +159,24 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             let url = res.data.fileDownloadUri.replace(":8080", ":9090");
-            sendMessage(type || file.type.split('/')[0].toUpperCase(), res.data.fileName, url);
-        } catch (err) { console.error(err); }
+
+            // Determine type more reliably
+            let msgType = type;
+            if (!msgType) {
+                const mime = file.type;
+                if (mime.startsWith('image/')) msgType = 'IMAGE';
+                else if (mime.startsWith('video/')) msgType = 'VIDEO';
+                else if (mime.startsWith('audio/')) msgType = 'AUDIO';
+                else msgType = 'DOCUMENT';
+            }
+
+            sendMessage(msgType, res.data.fileName, url);
+        } catch (err) {
+            console.error("Upload failed:", err);
+            alert("File upload failed. Please try again.");
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     const handleRoomChange = (newRoomId, isNewGroup = false, groupName = '') => {
@@ -178,6 +221,9 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
                 onLogout={onLogout}
                 onRoomChange={handleRoomChange}
                 onSearchUser={handleSearchUser}
+                theme={theme}
+                onThemeChange={onThemeChange}
+                themes={themes}
             />
             <ChatWindow
                 messages={messagesByRoom[currentRoomId] || []}
@@ -189,11 +235,13 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
                 onSendMessage={() => sendMessage()}
                 onFileUpload={(e) => handleFileUpload(e.target.files[0])}
                 onVoiceSend={(file) => handleFileUpload(file, 'VOICE_MSG')}
+                onDeleteMessage={deleteMessage}
                 onStartCall={startCall}
                 onEndCall={endCall}
                 onAcceptCall={acceptCall}
                 callStatus={callStatus}
                 caller={caller}
+                isUploading={isUploading}
             />
             <audio id="remoteAudio" autoPlay />
         </div>

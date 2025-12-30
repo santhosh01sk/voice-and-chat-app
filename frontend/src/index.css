@@ -5,6 +5,24 @@
   box-sizing: border-box;
 }
 
+:root {
+  --primary-color: #6366f1;
+  --primary-hover: #4338ca;
+  --accent-color: #a855f7;
+  --accent-hover: #7c3aed;
+  --bg-gradient: linear-gradient(to bottom right, #6366f1, #a855f7, #ec4899);
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --text-main: #1f2937;
+  --text-muted: #6b7280;
+  --border-color: #e5e7eb;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --sidebar-width: 28%;
+  --sidebar-min-width: 280px;
+}
+
 html,
 body {
   height: 100%;
@@ -67,4 +85,40 @@ body {
 
 .animate-fade-in-up {
   animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Icon Utilities (formerly Tailwind) */
+.w-4 {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+.w-5 {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+}
+
+.w-6 {
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+}
+
+.h-4 {
+  height: 1rem !important;
+}
+
+.h-5 {
+  height: 1.25rem !important;
+}
+
+.h-6 {
+  height: 1.5rem !important;
+}
+
+.hidden {
+  display: none !important;
 }

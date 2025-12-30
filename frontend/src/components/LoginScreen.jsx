@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 import './LoginScreen.css';
 
-const LoginScreen = ({ onJoin }) => {
+const LoginScreen = ({ onJoin, theme, onThemeChange, themes }) => {
     const [username, setUsername] = useState('');
     const [roomId, setRoomId] = useState('');
 
@@ -58,6 +58,18 @@ const LoginScreen = ({ onJoin }) => {
                         Start Chatting
                     </button>
                 </form>
+
+                <div className="theme-selector">
+                    {Object.keys(themes).map(t => (
+                        <div
+                            key={t}
+                            className={`theme-dot ${theme === t ? 'active' : ''}`}
+                            style={{ backgroundColor: themes[t].primary }}
+                            onClick={() => onThemeChange(t)}
+                            title={t.charAt(0).toUpperCase() + t.slice(1)}
+                        />
+                    ))}
+                </div>
             </div>
         </div>
     );

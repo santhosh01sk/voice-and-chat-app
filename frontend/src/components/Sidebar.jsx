@@ -3,10 +3,11 @@ import axios from 'axios';
 
 import './Sidebar.css';
 
-const Sidebar = ({ username, roomId, groups, recentDMs, onLogout, onRoomChange, onSearchUser }) => {
+const Sidebar = ({ username, roomId, groups, recentDMs, onLogout, onRoomChange, onSearchUser, theme, onThemeChange, themes }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [showThemeOptions, setShowThemeOptions] = useState(false);
 
     const handleSearch = async (e) => {
         const query = e.target.value;
@@ -50,6 +51,9 @@ const Sidebar = ({ username, roomId, groups, recentDMs, onLogout, onRoomChange, 
                     </div>
                 </div>
                 <div className="header-actions">
+                    <button onClick={() => setShowThemeOptions(!showThemeOptions)} title="Theme" className={`action-button ${showThemeOptions ? 'active' : ''}`}>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                    </button>
                     <button onClick={handleCreateGroup} title="Create Group" className="action-button">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     </button>
@@ -58,6 +62,20 @@ const Sidebar = ({ username, roomId, groups, recentDMs, onLogout, onRoomChange, 
                     </button>
                 </div>
             </div>
+
+            {showThemeOptions && (
+                <div className="theme-options-overlay">
+                    {Object.keys(themes).map(t => (
+                        <div
+                            key={t}
+                            className={`theme-dot ${theme === t ? 'active' : ''}`}
+                            style={{ backgroundColor: themes[t].primary }}
+                            onClick={() => onThemeChange(t)}
+                            title={t.charAt(0).toUpperCase() + t.slice(1)}
+                        />
+                    ))}
+                </div>
+            )}
 
             {/* Search */}
             <div className="search-container">
