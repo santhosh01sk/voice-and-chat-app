@@ -1,0 +1,234 @@
+.sidebar {
+    width: 28%;
+    min-width: 280px;
+    background-color: white;
+    border-right: 1px solid #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    z-index: 20;
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    background: linear-gradient(to top right, #6366f1, #a855f7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.username {
+    font-weight: 700;
+    color: #1f2937;
+    font-size: 0.875rem;
+    width: 6rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-status {
+    font-size: 0.75rem;
+    color: #10b981;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.status-dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 9999px;
+    background-color: #10b981;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-button {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    color: #9ca3af;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-button:hover {
+    background-color: #eef2ff;
+    color: #4f46e5;
+}
+
+.action-button.logout:hover {
+    background-color: #fef2f2;
+    color: #ef4444;
+}
+
+.search-container {
+    padding: 0 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.search-wrapper {
+    background-color: #f9fafb;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.search-wrapper:focus-within {
+    border-color: #e0e7ff;
+    background-color: white;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.search-icon {
+    color: #9ca3af;
+}
+
+.search-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.search-input::placeholder {
+    color: #9ca3af;
+}
+
+.sidebar-content {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0 0.75rem 1rem;
+}
+
+.section-title {
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.section-title:first-child {
+    margin-top: 0;
+}
+
+.list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.list-item:hover {
+    background-color: #f9fafb;
+}
+
+.list-item.active {
+    background-color: #f5f3ff;
+    border: 1px solid #e0e7ff;
+}
+
+.item-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    background-color: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.item-icon.general {
+    background-color: #e0e7ff;
+}
+
+.item-icon.p2p {
+    border-radius: 9999px;
+    background-color: #f1f5f9;
+}
+
+.icon-text {
+    color: #4f46e5;
+    font-weight: 700;
+}
+
+.icon-text.general {
+    font-style: italic;
+    font-family: serif;
+    font-size: 1.125rem;
+    opacity: 0.8;
+}
+
+.item-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.item-name {
+    color: #111827;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.item-name.p2p {
+    color: #374151;
+    font-weight: 500;
+}
+
+.item-subtitle {
+    font-size: 0.625rem;
+    color: #818cf8;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.sidebar-content.space-y-6>*+* {
+    margin-top: 1.5rem;
+}

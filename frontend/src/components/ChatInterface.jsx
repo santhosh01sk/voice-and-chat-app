@@ -5,6 +5,7 @@ import axios from 'axios';
 import Sidebar from './Sidebar';
 import ChatWindow from './ChatWindow';
 import useWebRTC from '../hooks/useWebRTC';
+import './ChatInterface.css';
 
 const ChatInterface = ({ username, initialRoomId, onLogout }) => {
     const [stompClient, setStompClient] = useState(null);
@@ -65,8 +66,8 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
 
         client.subscribe('/topic/' + roomId, (payload) => {
             const data = JSON.parse(payload.body);
-
             // Handle signaling and call status
+
             if (['VOICE_OFFER', 'VOICE_ANSWER', 'VOICE_CANDIDATE', 'VOICE_END'].includes(data.type)) {
                 if (data.sender !== username && window.handleSignaling) {
                     if (data.type === 'VOICE_OFFER' && callStatusRef.current === 'idle') {
@@ -168,7 +169,7 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
     };
 
     return (
-        <div className="flex h-screen w-full overflow-hidden bg-white">
+        <div className="chat-interface-container">
             <Sidebar
                 username={username}
                 roomId={currentRoomId}
@@ -194,7 +195,7 @@ const ChatInterface = ({ username, initialRoomId, onLogout }) => {
                 callStatus={callStatus}
                 caller={caller}
             />
-            <audio id="remoteAudio" autoPlay style={{ display: 'none' }} />
+            <audio id="remoteAudio" autoPlay />
         </div>
     );
 };
